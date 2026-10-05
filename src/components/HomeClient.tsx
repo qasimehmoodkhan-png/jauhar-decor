@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import Image from "next/image";
+import NextImage, { type ImageProps } from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Camera, Menu, X, Share2, Layers3, ScanLine, Maximize2, ShieldCheck, MessageCircle } from "lucide-react";
 import type { Project } from "@/db/schema";
@@ -47,24 +47,46 @@ function ProjectLightbox({ project, onClose }: { project: Project; onClose: () =
   return <motion.div className="lightbox" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label={project.title}><div className="lightbox-top"><Logo compact/><span>PROJECT / {categoryLabels[project.category as Category]}</span><button onClick={onClose} aria-label="Close project"><X size={24}/></button></div><div className="lightbox-image-area"><div className="lightbox-image"><ProjectArtwork src={images[index]} alt={`${project.title} view ${index + 1}`} sizes="100vw" className="object-cover"/>{compare && images.length > 1 && <div className="compare-overlay" style={{ width: `${position}%` }}><ProjectArtwork src={images[(index + 1) % images.length]} alt="Alternate project view" sizes="100vw" className="compare-img"/><span className="compare-line"/></div>}{compare && images.length > 1 && <input className="compare-range" type="range" min="0" max="100" value={position} onChange={e => setPosition(Number(e.target.value))} aria-label="Compare project views"/>}</div>{images.length > 1 && !compare && <><button className="gallery-arrow left" onClick={() => setIndex((index - 1 + images.length) % images.length)} aria-label="Previous image"><ChevronLeft/></button><button className="gallery-arrow right" onClick={() => setIndex((index + 1) % images.length)} aria-label="Next image"><ChevronRight/></button></>}</div><div className="lightbox-bottom"><div><span className="eyebrow">{project.location || "JAUHAR DECOR PROJECT"} <span className="sep">/</span> {project.completedAt ? new Date(project.completedAt).getFullYear() : "RECENT WORK"}</span><h2>{project.title}</h2><p>{project.description}</p></div><div className="lightbox-actions">{images.length > 1 && <button onClick={() => setCompare(!compare)} className="compare-button">{compare ? "View gallery" : "Compare views"} <span>{compare ? <X size={16}/> : <Maximize2 size={16}/>}</span></button>}<span className="image-count">{String(index + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}</span></div></div></motion.div>;
 }
 
+const heroImage = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600&auto=format&fit=crop";
+const detailImage = "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop";
 const comparisonBefore = "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1600&auto=format&fit=crop";
-const comparisonAfter = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600&auto=format&fit=crop";
+const comparisonAfter = heroImage;
+
+function Image(props: ImageProps) {
+  const localPhotoSources: Record<string, string> = {
+    "/images/hero-editorial.jpg": heroImage,
+    "/images/project-studio.jpg": detailImage,
+  };
+  const src = typeof props.src === "string" ? localPhotoSources[props.src] || props.src : props.src;
+  const className = typeof props.src === "string" && localPhotoSources[props.src]
+    ? `${props.className || ""} object-cover w-full h-full`
+    : props.className;
+  return <NextImage {...props} src={src} className={className} onError={event => {
+    props.onError?.(event);
+    if (props.onError) return;
+    if (event.currentTarget.dataset.fallbackAttempted) { event.currentTarget.style.visibility = "hidden"; return; }
+    event.currentTarget.dataset.fallbackAttempted = "true";
+    event.currentTarget.srcset = "";
+    event.currentTarget.src = src === heroImage ? detailImage : heroImage;
+  }} />;
+}
 
 function BeforeAfterSlider() {
   const [position, setPosition] = useState(50);
   return <section className="before-after-section" aria-labelledby="before-after-title"><div className="before-after-inner content-width"><div className="section-kicker"><span className="section-dot"/> A TRANSFORMATION, IN DETAIL <span className="section-number">04 / 04</span></div><div className="before-after-heading"><div><h2 id="before-after-title">A different<br/><em>perspective.</em></h2></div><p>See what a thoughtful frame, a clear view, and considered craftsmanship can do for a space.</p></div><div className="before-after-frame"><div className="before-after-base"><Image src={comparisonBefore} alt="Interior before architectural glass and aluminum detailing" fill sizes="(max-width: 800px) 100vw, 84vw"/></div><div className="before-after-overlay" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}><Image src={comparisonAfter} alt="Finished residence with refined glass and aluminum detailing" fill sizes="(max-width: 800px) 100vw, 84vw"/></div><span className="before-after-label before-label">BEFORE</span><span className="before-after-label after-label">AFTER</span><div className="before-after-divider" style={{ left: `${position}%` }} aria-hidden="true"><span><ChevronLeft size={15}/><ChevronRight size={15}/></span></div><input className="before-after-range" type="range" min="0" max="100" value={position} onChange={e => setPosition(Number(e.target.value))} aria-label="Drag to compare before and after"/></div><div className="before-after-caption"><span>01 / BEFORE & AFTER</span><span>DRAG TO EXPLORE <ArrowRight size={14}/></span></div></div></section>;
 }
 
-function ProjectArtwork({ src, alt, sizes, className }: { src: string; alt: string; sizes: string; className?: string }) {
+function ProjectArtwork({ src, alt, sizes, className, priority = false }: { src: string; alt: string; sizes: string; className?: string; priority?: boolean }) {
   const fallbackImages = [
-    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1600&auto=format&fit=crop",
+    heroImage,
+    detailImage,
     comparisonBefore,
   ];
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  useEffect(() => { setFailedAttempts(0); }, [src]);
-  const imageSrc = failedAttempts === 0 ? (src || fallbackImages[0]) : fallbackImages[Math.min(failedAttempts - 1, fallbackImages.length - 1)];
-  return <Image src={imageSrc} alt={alt} fill sizes={sizes} className={className} onError={() => setFailedAttempts(attempt => Math.min(attempt + 1, fallbackImages.length))}/>;
+  const imageSources = Array.from(new Set([src || fallbackImages[0], ...fallbackImages]));
+  const [failure, setFailure] = useState({ src, attempts: 0 });
+  const failedAttempts = failure.src === src ? failure.attempts : 0;
+  const imageSrc = imageSources[Math.min(failedAttempts, imageSources.length - 1)];
+  return <Image src={imageSrc} alt={alt} fill sizes={sizes} priority={priority} className={className} onError={event => { if (failedAttempts < imageSources.length - 1) setFailure({ src, attempts: failedAttempts + 1 }); else event.currentTarget.style.visibility = "hidden"; }}/>;
 }
 
 export default function HomeClient({ projects }: { projects: Project[] }) {

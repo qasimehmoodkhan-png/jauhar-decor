@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Admin Studio", robots: { index: false, follow: false } };
 export default async function AdminPage() {
   const admin = await getAdmin();
-  if (!admin) return <AdminLogin demo={!process.env.ADMIN_EMAIL && !process.env.ADMIN_PASSWORD}/>;
+  if (!admin) return <AdminLogin/>;
   const [projects, leads] = await Promise.all([getProjects(false), db.select().from(quotes).orderBy(desc(quotes.createdAt))]);
   return <AdminClient initialProjects={projects} initialQuotes={leads} name={admin.name}/>;
 }

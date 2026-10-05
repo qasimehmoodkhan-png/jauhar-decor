@@ -3,24 +3,21 @@ import { SignJWT, jwtVerify } from "jose";
 import { db } from "@/db";
 import { admins } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { compare, hash } from "bcryptjs";
+import { hash } from "bcryptjs";
 
 const cookieName = "jauhar_admin_session";
 const secret = new TextEncoder().encode(process.env.AUTH_SECRET || process.env.ADMIN_JWT_SECRET || process.env.DATABASE_URL || "local-preview-only-secret");
 export const demoEmail = "admin@jauhardecor.com";
-export const demoPassword = "Jauhar@2026!";
 
-export async function authenticate(email: string, password: string) {
+export async function authenticate(password: string) {
   const configuredEmail = process.env.ADMIN_EMAIL || demoEmail;
-  const configuredPassword = process.env.ADMIN_PASSWORD || demoPassword;
-  if (email.toLowerCase() !== configuredEmail.toLowerCase()) return null;
+  const configuredPassword = process.env.ADMIN_PASSWORD || "adminjauhar26";
+  if (password !== configuredPassword) return null;
   let [admin] = await db.select().from(admins).where(eq(admins.email, configuredEmail.toLowerCase())).limit(1);
   if (!admin) {
-    if (password !== configuredPassword) return null;
     const [created] = await db.insert(admins).values({ email: configuredEmail.toLowerCase(), password: await hash(configuredPassword, 12), name: "Jauhar Admin" }).returning();
     admin = created;
   }
-  if (!await compare(password, admin.password)) return null;
   return admin;
 }
 export async function setSession(id: string) {

@@ -1,21 +1,48 @@
 "use client";
-import { useState, useRef, type FormEvent, type DragEvent, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, type FormEvent, type DragEvent, type ChangeEvent } from "react";
 import type { Project } from "@/db/schema";
 import { categoryLabels, categories, type Category } from "@/lib/categories";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronDown, Eye, EyeOff, FileImage, FolderKanban, Inbox, LayoutDashboard, LogOut, Menu, MoreHorizontal, Plus, Search, Star, Trash2, UploadCloud, X } from "lucide-react";
-import Image from "next/image";
+import Link from "next/link";
+import NextImage, { type ImageProps } from "next/image";
+
+const fallbackImage = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600&auto=format&fit=crop";
+
+function Image(props: ImageProps) {
+  const src = props.src === "/images/hero-editorial.jpg" ? fallbackImage : props.src;
+  return <NextImage {...props} src={src} onError={event => {
+    props.onError?.(event);
+    if (props.onError) return;
+    if (event.currentTarget.dataset.fallbackAttempted) { event.currentTarget.style.visibility = "hidden"; return; }
+    event.currentTarget.dataset.fallbackAttempted = "true";
+    event.currentTarget.srcset = "";
+    event.currentTarget.src = fallbackImage;
+  }} />;
+}
 
 type Inquiry = { id: string; name: string; email: string; phone: string; service: string; message: string; createdAt: string | Date };
 type ProjectForm = { title: string; category: Category; description: string; clientName: string; location: string; coverImage: string; gallery: string[]; isFeatured: boolean; isPublished: boolean; completedAt: string };
 const blank: ProjectForm = { title: "", category: "INTERIOR", description: "", clientName: "", location: "", coverImage: "", gallery: [], isFeatured: false, isPublished: true, completedAt: "" };
 
-export function AdminLogin({ demo }: { demo: boolean }) {
-  const [loading, setLoading] = useState(false); const [error, setError] = useState("");
-  async function submit(e: FormEvent<HTMLFormElement>) { e.preventDefault(); setLoading(true); setError(""); const data = Object.fromEntries(new FormData(e.currentTarget)); try { const res = await fetch("/api/admin/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); const json = await res.json(); if (!res.ok) throw new Error(json.error || "Sign in failed"); window.location.reload(); } catch (err) { setError(err instanceof Error ? err.message : "Sign in failed"); setLoading(false); } }
-  return <main className="admin-login"><div className="login-panel"><a href="/" className="login-back"><ArrowLeft size={16}/> BACK TO WEBSITE</a><div className="admin-login-logo"><Image src="/logo-jauhar.svg" alt="Jauhar Decor Home Furnishing logo" width={108} height={86} unoptimized/></div><span className="admin-eyebrow">JAUHAR DECOR / ADMIN</span><h1>Welcome back<span>.</span></h1><p>Sign in to manage your portfolio and quote requests.</p><form onSubmit={submit}><label>Email address<input name="email" type="email" placeholder="you@example.com" required defaultValue={demo ? "admin@jauhardecor.com" : ""}/></label><label>Password<input name="password" type="password" placeholder="Enter your password" required defaultValue={demo ? "Jauhar@2026!" : ""}/></label>{error && <div className="admin-error">{error}</div>}<button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign in to dashboard"}<ArrowRight size={18}/></button></form>{demo && <div className="demo-hint">Preview credentials are pre-filled. Set ADMIN_EMAIL, ADMIN_PASSWORD and AUTH_SECRET for deployment.</div>}</div><div className="login-visual"><Image src="/images/hero-editorial.jpg" alt="Architectural glass interior" fill sizes="50vw" className="object-cover"/><div className="login-visual-caption"><span>THE ART OF SPACES</span><strong>Crafted with intention.<br/>Managed with ease.</strong></div></div></main>;
+export function AdminLogin() {
+  const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [password, setPassword] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) { e.preventDefault(); setLoading(true); setError(""); try { const res = await fetch("/api/admin/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }); const json = await res.json(); if (!res.ok) throw new Error(json.error || "Sign in failed"); window.location.replace("/admin"); } catch (err) { setError(err instanceof Error ? err.message : "Sign in failed"); setLoading(false); } }
+  return <main className="admin-login"><div className="login-panel"><Link href="/" className="login-back"><ArrowLeft size={16}/> BACK TO WEBSITE</Link><div className="admin-login-logo"><Image src="/logo-jauhar.svg" alt="Jauhar Decor Home Furnishing logo" width={108} height={86} unoptimized/></div><span className="admin-eyebrow">JAUHAR DECOR / ADMIN</span><h1>Welcome back<span>.</span></h1><p>Sign in to manage your portfolio and quote requests.</p><form onSubmit={submit}><label>Password<input name="password" type="password" placeholder="Enter your password" required autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)}/></label>{error && <div className="admin-error">{error}</div>}<button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign in to dashboard"}<ArrowRight size={18}/></button></form></div><div className="login-visual"><Image src="/images/hero-editorial.jpg" alt="Architectural glass interior" fill sizes="50vw" className="object-cover"/><div className="login-visual-caption"><span>THE ART OF SPACES</span><strong>Crafted with intention.<br/>Managed with ease.</strong></div></div></main>;
 }
 
 export default function AdminClient({ initialProjects, initialQuotes, name }: { initialProjects: Project[]; initialQuotes: Inquiry[]; name: string }) {
+  useEffect(() => {
+    function recoverImage(event: Event) {
+      const image = event.target;
+      if (!(image instanceof HTMLImageElement)) return;
+      if (image.dataset.fallbackAttempted) { image.style.visibility = "hidden"; return; }
+      image.dataset.fallbackAttempted = "true";
+      image.srcset = "";
+      image.src = fallbackImage;
+    }
+    document.addEventListener("error", recoverImage, true);
+    return () => document.removeEventListener("error", recoverImage, true);
+  }, []);
   const [projects, setProjects] = useState(initialProjects); const [inquiries] = useState(initialQuotes); const [tab, setTab] = useState<"overview" | "projects" | "quotes">("overview"); const [search, setSearch] = useState(""); const [editing, setEditing] = useState<Project | "new" | null>(null); const [form, setForm] = useState<ProjectForm>(blank); const [saving, setSaving] = useState(false); const [uploading, setUploading] = useState(false); const [error, setError] = useState(""); const [mobileMenu, setMobileMenu] = useState(false); const fileInput = useRef<HTMLInputElement>(null);
   const published = projects.filter(p => p.isPublished).length; const featured = projects.filter(p => p.isFeatured).length;
   function openEditor(project?: Project) { setEditing(project || "new"); setForm(project ? { title: project.title, category: project.category, description: project.description, clientName: project.clientName || "", location: project.location || "", coverImage: project.coverImage, gallery: project.gallery || [], isFeatured: project.isFeatured, isPublished: project.isPublished, completedAt: project.completedAt ? new Date(project.completedAt).toISOString().slice(0, 10) : "" } : { ...blank, gallery: [] }); setError(""); }

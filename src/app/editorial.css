@@ -35,6 +35,9 @@
 .site-shell .hero-copy-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #d8d8d2;padding-top:18px;margin-top:auto;color:#777c78;font-size:9px;letter-spacing:.12em;font-weight:700}
 .site-shell .hero-asterisk{font-size:14px;margin-left:8px;color:#383b39;vertical-align:middle}
 .site-shell .hero-photo-panel{position:relative;min-width:0;min-height:0;background:#b6ad9e;overflow:hidden}
+.site-shell .hero-photo-panel{width:100%;height:100%;min-height:400px}
+.site-shell .statement-photo{border:1px solid #262626;border-radius:0;overflow:hidden}
+.site-shell .statement-photo img{object-fit:cover;width:100%;height:100%}
 .site-shell .hero-image-reveal{position:absolute;inset:0;overflow:hidden}
 .site-shell .hero-image{object-fit:cover;object-position:center 54%;filter:none;transform:scale(1.065);animation:jauhar-image-settle 2.2s cubic-bezier(.2,.7,.2,1) both}
 @keyframes jauhar-image-settle{from{transform:scale(1.12)}to{transform:scale(1)}}
